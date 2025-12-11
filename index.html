@@ -18,6 +18,9 @@
     --card-bg-dark: #2d2f36;
     --radius: 14px;
     --shadow: 0 8px 28px rgba(0,0,0,0.12);
+    /* 強調色（ダークモード/ライトモード共通の目立つ色） */
+    --highlight-color: #ff8c00; /* ライトモード用のオレンジ */
+    --highlight-color-dark: #ffda79; /* ダークモード用の明るい黄色 */
 }
 
 /* base style */
@@ -52,16 +55,25 @@ body.dark input[type="text"]{
 body.dark label{
     color:#dcdcdc;
 }
+
 /* 結果エリア */
+.result{
+    /* ライトモードでの強調文字色 */
+    color: #111;
+}
+.result strong {
+    color: var(--highlight-color); 
+}
 body.dark .result{
     background:#39405a;
     color:#f0f0ff;
     border-left-color:#9cb3ff;
 }
-/* 結果内の強調文字 */
+/* 【★修正】計算結果の強調文字をダークモード用の明るい色にする */
 body.dark .result strong {
-    color: #ffda79;
+    color: var(--highlight-color-dark); /* #ffda79 */
 }
+
 /* 履歴アイテム */
 body.dark .historyItem{
     background:#383b46;
@@ -87,6 +99,11 @@ body.dark .car-round-label {
 body.dark .historyItem b {
     color: #cfcfff;
 }
+/* 【★修正】履歴アイテム内の強調文字をダークモード用の明るい色にする */
+body.dark .historyItem strong {
+    color: var(--highlight-color-dark) !important;
+}
+
 /* タブボタン */
 body.dark .tab-btn{
     background: #4a4d5c;
@@ -232,7 +249,6 @@ button.sub-btn{
     background:#eef3ff;
     border-left:6px solid var(--main);
     border-radius:12px;
-    color:#111;
     font-size:15px;
     line-height:1.6;
     transition:background .25s,color .25s;
@@ -747,6 +763,11 @@ function loadHistory(){
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     
+    // 【★修正】JavaScriptでCSS変数を取得するように変更
+    const isDark = document.body.classList.contains('dark');
+    const strongColor = isDark ? 'var(--highlight-color-dark)' : 'var(--highlight-color)';
+    const hrStyle = isDark ? 'border:0; border-top:1px solid rgba(255,255,255,0.15); margin: 6px 0;' : 'border:0; border-top:1px solid rgba(0,0,0,0.1); margin: 6px 0;';
+
     history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'historyItem';
@@ -756,9 +777,6 @@ function loadHistory(){
         const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : '';
         let content = '';
         
-        // 履歴内の強調文字の色を調整
-        const strongColor = document.body.classList.contains('dark') ? '#ffda79' : '#111';
-
         if(item.mode === 'single'){
             const isRound = item.round ? ' (往復)' : '';
             const perPerson = item.pe > 0 ? ` (1人あたり: <strong style="color:${strongColor};">${Math.round(item.cost/item.pe)} 円</strong> / ${item.pe}人)` : '';
@@ -775,9 +793,6 @@ function loadHistory(){
             }).join('');
             
             const perPerson = item.pe > 0 ? ` (1人あたり: <strong style="color:${strongColor};">${Math.round(item.totalCost/item.pe)} 円</strong> / ${item.pe}人)` : '';
-
-            // 履歴の区切り線もダークモード対応
-            const hrStyle = document.body.classList.contains('dark') ? 'border:0; border-top:1px solid rgba(255,255,255,0.15); margin: 6px 0;' : 'border:0; border-top:1px solid rgba(0,0,0,0.1); margin: 6px 0;';
 
             content = `
                 <ul style="list-style-type:none; padding-left:10px; margin: 4px 0 8px 0;">

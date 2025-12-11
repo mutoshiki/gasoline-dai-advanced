@@ -425,52 +425,119 @@ function resetInputs(){
     document.getElementById('copyRow').style.display = 'none';
 }
 
-// --- 複数車追加/削除 ---
+/* ---- 複数台追加/削除/再インデックス処理 (修正後) ---- */
+
+// carNameが車名（プレースホルダー）、車Nがラベルになっています。
+// HTML構造に合わせ、車名入力フィールドをテキスト入力に統一します。
+
 function addCarRow(data={}) {
     const container = document.getElementById('carList');
     const idx = container.children.length;
     const div = document.createElement('div');
-    div.className='car-item';
-    div.dataset.index = idx;
-
-    const deleteBtn = idx>0 ? `<button onclick="removeCarRow(this)" style="background:none;border:none;color:red;cursor:pointer;font-size:18px;padding:0;line-height:1;position:relative;top:2px;">&times;</button>` : '';
+    div.className = 'car-item';
+    
+    // 削除ボタンのHTMLを条件付きで生成
+    const deleteBtnHtml = (idx > 0) 
+        ? `<button class="delCarBtn" style="background:none;border:none;color:red;cursor:pointer;font-size:18px;padding:0;line-height:1;position:relative;top:2px;" aria-label="車を削除">&times;</button>` 
+        : '';
     
     div.innerHTML = `
-        <strong style="display:flex; justify-content:space-between; align-items:center;">
-            車 ${idx+1}
-            ${deleteBtn}
+        <strong class="car-item-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="car-label">車 ${idx + 1}</span>
+            ${deleteBtnHtml}
         </strong>
         <div class="car-row-inner">
-            <input type="text" placeholder="名前" value="${data.name||''}" class="carName" aria-label="車${idx+1} 名前">
-            <input type="number" inputmode="decimal" placeholder="" value="${data.distance || ''}" class="carDistance" aria-label="車${idx+1} 走行距離">
-            <input type="number" inputmode="decimal" placeholder="" value="${data.economy || ''}" class="carEconomy" aria-label="車${idx+1} 燃費">
-            <input type="number" inputmode="decimal" placeholder="" value="${data.price || ''}" class="carPrice" aria-label="車${idx+1} ガソリン価格">
+            <input type="text" placeholder="車名 (任意)" value="${data.name || ''}" class="carName" aria-label="車${idx + 1} 名前">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.distance || ''}" class="carDistance" aria-label="車${idx + 1} 走行距離">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.economy || ''}" class="carEconomy" aria-label="車${idx + 1} 燃費">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.price || ''}" class="carPrice" aria-label="車${idx + 1} ガソリン価格">
             <div class="car-round-group">
-                <input type="checkbox" id="carRound${idx}" class="carRound" ${data.round?'checked':''} aria-label="車${idx+1} 往復">
+                <input type="checkbox" id="carRound${idx}" class="carRound" ${data.round ? 'checked' : ''} aria-label="車${idx + 1} 往復">
                 <label for="carRound${idx}" class="car-round-label">往復</label>
             </div>
         </div>
     `;
     container.appendChild(div);
-}
 
-function removeCarRow(btnElement){
-    const carItem = btnElement.closest('.car-item');
-    if(carItem){
-        carItem.remove();
-        document.querySelectorAll('.car-item').forEach((item,index)=>{
-            const num = index+1;
-            let strongContent = `車 ${num}`;
-            const deleteBtnHtml = index>0 ? `<button onclick="removeCarRow(this)" style="background:none;border:none;color:red;cursor:pointer;font-size:18px;padding:0;line-height:1;position:relative;top:2px;">&times;</button>` : '';
-            item.querySelector('strong').innerHTML = strongContent + deleteBtnHtml;
-            item.querySelector('.carName').setAttribute('aria-label', `車${num} 名前`);
-            item.querySelector('.carDistance').setAttribute('aria-label', `車${num} 走行距離`);
-            item.querySelector('.carEconomy').setAttribute('aria-label', `車${num} 燃費`);
-            item.querySelector('.carPrice').setAttribute('aria-label', `車${num} ガソリン価格`);
-            item.querySelector('.carRound').id=`carRound${index}`;
-            item.querySelector('.car-round-group label').setAttribute('for', `carRound${index}`);
+    // 削除ボタンのイベント付与 (idx > 0 の場合のみ存在する)
+    const delBtn = div.querySelector('.delCarBtn');
+    if (delBtn) {
+        delBtn.addEventListener('click', () => {
+            removeCarRow(div);
         });
     }
+
+    // 車名入力欄にイベントリスナーを追加して、ラベルも更新できるようにする
+    const carNameInput = div.querySelector('.carName');
+    const carLabelSpan = div.querySelector('.car-label');
+    const updateLabels = (name) => {
+        const baseName = name || carLabelSpan.textContent;
+        div.querySelector('.carDistance').setAttribute('aria-label', `${baseName} 走行距離`);
+        // 他のaria-labelも同様に更新...
+    };
+    
+    carNameInput.addEventListener('input', (e) => {
+        // ここでは carLabel は変更せず、calc 関数でのみ carName の値を使用する
+        // aria-labelの更新が必要ならここで行う
+        updateLabels(e.target.value);
+    });
+
+}
+
+function removeCarRow(carItem){
+    carItem.remove();
+    
+    // データをlocalStorageから削除
+    // ※ このコンテキストの外にある saveMultiCarInputs 関数を呼び出す必要があります
+    if (typeof saveMultiCarInputs === 'function') {
+        saveMultiCarInputs();
+    }
+    
+    // 残った車の番号を更新
+    document.querySelectorAll('#carList .car-item').forEach((item,index)=>{
+        const num = index + 1;
+        const nameValue = item.querySelector('.carName').value;
+        const baseName = nameValue ? nameValue : `車 ${num}`;
+        
+        // 1. ラベルテキストの更新 (span.car-labelを使用)
+        const labelSpan = item.querySelector('.car-label');
+        if (labelSpan) {
+            labelSpan.textContent = `車 ${num}`;
+        }
+
+        // 2. 削除ボタンの再構築 (idx=0の場合は削除)
+        const header = item.querySelector('.car-item-header');
+        const existingDelBtn = header.querySelector('.delCarBtn');
+
+        if (index === 0) {
+            // 最初の要素になった場合、削除ボタンを確実に消す
+            if (existingDelBtn) existingDelBtn.remove();
+        } else {
+            // 2番目以降の要素の場合、ボタンが存在しなければ作成
+            if (!existingDelBtn) {
+                const newDelBtn = document.createElement('button');
+                newDelBtn.className = 'delCarBtn';
+                newDelBtn.innerHTML = '&times;';
+                newDelBtn.style.cssText = 'background:none;border:none;color:red;cursor:pointer;font-size:18px;padding:0;line-height:1;position:relative;top:2px;';
+                newDelBtn.setAttribute('aria-label', '車を削除');
+                newDelBtn.addEventListener('click', () => removeCarRow(item));
+                header.appendChild(newDelBtn);
+            }
+        }
+        
+        // 3. aria-label と ID を更新
+        item.querySelector('.carName').setAttribute('aria-label', `${baseName} 名前`);
+        item.querySelector('.carDistance').setAttribute('aria-label', `${baseName} 走行距離`);
+        item.querySelector('.carEconomy').setAttribute('aria-label', `${baseName} 燃費`);
+        item.querySelector('.carPrice').setAttribute('aria-label', `${baseName} ガソリン価格`);
+        
+        const roundCheckbox = item.querySelector('.carRound');
+        roundCheckbox.id = `carRound${index}`;
+        roundCheckbox.setAttribute('aria-label', `${baseName} 往復`);
+        
+        item.querySelector('.car-round-group label').setAttribute('for', `carRound${index}`);
+    });
+}
 }
 
 // === 計算処理などは既存コード維持 ===

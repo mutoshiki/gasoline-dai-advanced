@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -52,12 +51,13 @@ body.dark input[type="text"]{
 body.dark label{
     color:#dcdcdc;
 }
+/* ダークモード時の結果エリア */
 body.dark .result{
     background:#39405a;
     color:#f0f0ff;
     border-left-color:#9cb3ff;
 }
-/* ダークモード時の結果内の強調文字を見やすくする */
+/* ダークモード時の結果内の強調文字 */
 body.dark .result strong {
     color: #ffda79;
 }
@@ -93,7 +93,7 @@ body.dark .tab-btn.active{
     background: var(--main-dark);
     color: #ffffff;
 }
-/* 【修正箇所】セレクタの優先順位を修正し、車名ラベルの色を適用 */
+/* ダークモード時の複数車フォーム文字色修正 */
 body.dark #carList strong,
 body.dark .car-item strong,
 body.dark .car-input-labels{
@@ -208,18 +208,6 @@ button.sub-btn{
     color:#fff;
 }
 
-.result {
-    margin-top: 18px;
-    padding: 16px 18px;
-    background: #eef3ff;
-    border-left: 6px solid var(--main);
-    border-radius: 12px;
-    color: #111;
-    font-size: 15px;
-    line-height: 1.6;
-    transition: background .25s, color .25s;
-    /* 初期状態は非表示だがJSで block になる */
-}    
 /* 複数車フォーム */
 .car-list-container { padding-top: 5px; }
 .car-input-labels { display: flex; gap: 6px; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: #555; align-items: center; padding-right: 18px; }
@@ -228,15 +216,25 @@ button.sub-btn{
 
 .car-item { margin-bottom: 15px; padding: 8px 0; border-bottom: 1px solid #eee; }
 #carList input[type="number"], #carList input[type="text"]{ padding: 8px 6px; border-radius: 8px; font-size: 14px; text-align: center; }
-/* ID指定で優先度を確保 */
 #carList strong { display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:14px; color:#333; }
 .car-row-inner{ display:flex; gap:6px; margin-top:4px; align-items: center; }
 .car-round-group{ display:flex; align-items:center; gap:2px; white-space:nowrap; font-size:14px; color:#555; flex:0 0 auto; }
 .car-round-group input[type="checkbox"]{ transform: scale(0.95); margin-left:0; }
 .carName { flex: 0 0 100px; text-align: left !important; padding: 8px 12px !important; }
 
-/* result */
-.result{ margin-top:18px; padding:16px 18px; background:#eef3ff; border-left:6px solid var(--main); border-radius:12px; color:#111; font-size:15px; line-height:1.6; transition:background .25s,color .25s; }
+/* result (修正・統合済み) */
+.result{
+    margin-top:18px;
+    padding:16px 18px;
+    background:#eef3ff;
+    border-left:6px solid var(--main);
+    border-radius:12px;
+    color:#111;
+    font-size:15px;
+    line-height:1.6;
+    transition:background .25s,color .25s;
+    /* JSで display:block に切り替えるため、HTML上は style="display:none" */
+}
 
 /* copy buttons row */
 .copy-row{ display:flex; gap:10px; margin-top:12px; }
@@ -437,7 +435,6 @@ function addCarRow(data={}) {
     const div = document.createElement('div');
     div.className = 'car-item';
     
-    // 削除ボタンのHTMLを条件付きで生成
     const deleteBtnHtml = (idx > 0) 
         ? `<button class="delCarBtn" style="background:none;border:none;color:red;cursor:pointer;font-size:18px;padding:0;line-height:1;position:relative;top:2px;" aria-label="車を削除">&times;</button>` 
         : '';
@@ -460,7 +457,6 @@ function addCarRow(data={}) {
     `;
     container.appendChild(div);
 
-    // 削除ボタンのイベント付与
     const delBtn = div.querySelector('.delCarBtn');
     if (delBtn) {
         delBtn.addEventListener('click', () => {
@@ -541,33 +537,25 @@ function toggleTheme(){
     localStorage.setItem('theme', nowDark?'dark':'light');
 }
 
-/* --- ここからコピー --- */
-
+/* ---- 計算処理（修正版） ---- */
 function calc(){
-    // 現在のモード判定
     const isMulti = currentMode === 'multi';
     let totalCost = 0;
     let html = '';
     let per = 0;
 
-    // 結果表示用要素の取得
     const resultEl = document.getElementById('result');
     const copyRowEl = document.getElementById('copyRow');
     const copyPerBtn = document.getElementById('copyPerBtn');
 
-    // 計算前に一旦非表示にする
     if(resultEl) resultEl.style.display = 'none';
     if(copyRowEl) copyRowEl.style.display = 'none';
 
-    // エラー表示用
     const displayError = (message) => {
         alert(message);
     };
 
     if(!isMulti){
-        // -------------------------
-        // 1台モードの計算
-        // -------------------------
         const dInput = document.getElementById('distance');
         const eInput = document.getElementById('fuelEconomy');
         const gInput = document.getElementById('gasPrice');
@@ -582,19 +570,16 @@ function calc(){
         const pe = parseInt(pInput.value) || 0;
         const round = rInput.checked;
 
-        // 入力チェック
         if(isNaN(d) || isNaN(e) || isNaN(g) || d <= 0 || e <= 0 || g <= 0){ 
             displayError('走行距離、燃費、ガソリン価格を正しく入力してください'); 
             return; 
         }
 
-        // 計算
         const dist = round ? d * 2 : d;
         const fuel = dist / e;
         const cost = Math.round(fuel * g);
         totalCost = cost;
 
-        // HTML生成
         html = `走行距離：${dist} km${round ? ' (往復)' : ''}<br>
                 必要ガソリン量：${fuel.toFixed(2)} L<br>
                 ガソリン代：<strong>${cost} 円</strong>`;
@@ -607,14 +592,10 @@ function calc(){
             if(copyPerBtn) copyPerBtn.style.display = 'none';
         }
 
-        // 履歴と入力保存
         if(typeof saveHistory === 'function') saveHistory({ mode:'single', d, e, g, pe, round, cost, timestamp: Date.now() });
         if(typeof saveSingleCarInputs === 'function') saveSingleCarInputs();
 
     } else {
-        // -------------------------
-        // 複数台モードの計算
-        // -------------------------
         const carRows = document.querySelectorAll('#carList .car-item');
         const mpInput = document.getElementById('multiPeople');
         const pe = parseInt(mpInput ? mpInput.value : 0) || 0;
@@ -625,7 +606,6 @@ function calc(){
             return; 
         }
 
-        // 各車の計算ループ
         for(let i = 0; i < carRows.length; i++){
             const row = carRows[i];
             const nameInput = row.querySelector('.carName');
@@ -650,7 +630,6 @@ function calc(){
             const cost = Math.round(fuel * g);
             totalCost += cost;
 
-            // HTML生成（見やすく区切る）
             html += `<div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed rgba(120,120,120,0.3);">
                         <strong>${name}</strong><br>
                         <span style="font-size:0.9em; opacity:0.9;">距離:${dist}km${round ? '(往)' : ''} / 燃費:${e} / 単価:${g}</span><br>
@@ -660,7 +639,6 @@ function calc(){
             carData.push({ name, distance:d, economy:e, price:g, round, cost });
         }
 
-        // 合計表示
         html += `<div style="margin-top:8px; font-size:1.1em;">合計ガソリン代：<strong>${totalCost} 円</strong></div>`;
         
         if(pe > 0){
@@ -671,28 +649,23 @@ function calc(){
             if(copyPerBtn) copyPerBtn.style.display = 'none';
         }
 
-        // 履歴と入力保存
         if(typeof saveHistory === 'function') saveHistory({ mode:'multi', cars:carData, pe, totalCost, timestamp: Date.now() });
         if(typeof saveMultiCarInputs === 'function') saveMultiCarInputs();
     }
 
-    // 最終的な表示処理
     lastCost = totalCost;
     lastPer = per;
     
     if(resultEl) {
         resultEl.innerHTML = html;
-        resultEl.style.display = 'block'; // ここで確実に表示
+        resultEl.style.display = 'block';
     }
     if(copyRowEl) {
         copyRowEl.style.display = 'flex';
     }
 }
 
-/* --- ここまで --- */
-
 /* ---- 保存/リセット/コピー ---- */
-
 function saveMultiCarInputs(){
     const carRows = document.querySelectorAll('#carList .car-item');
     const carData = Array.from(carRows).map(row => ({
@@ -743,7 +716,6 @@ function copyPerCost(){
 }
 
 /* ---- 履歴機能 ---- */
-
 function saveHistory(data){
     let history = JSON.parse(localStorage.getItem('nenpi_history') || '[]');
     history.unshift(data);

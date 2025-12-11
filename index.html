@@ -534,97 +534,92 @@ function toggleTheme(){
 
 function calc(){
     const isMulti = currentMode === 'multi';
-    let totalCost=0, html='', per=0;
+    let totalCost = 0, html = '', per = 0;
 
     const resultEl = document.getElementById('result');
     const copyRowEl = document.getElementById('copyRow');
-
-    // 計算前に結果表示をリセット
-    resultEl.style.display='none';
-    copyRowEl.style.display='none';
+    resultEl.style.display = 'none';
+    copyRowEl.style.display = 'none';
 
     const displayError = (message) => {
         alert(message);
     };
 
     if(!isMulti){
-        const d=parseFloat(document.getElementById('distance').value);
-        const e=parseFloat(document.getElementById('fuelEconomy').value);
-        const g=parseFloat(document.getElementById('gasPrice').value);
-        const pe=parseInt(document.getElementById('people').value)||0;
-        const round=document.getElementById('roundTrip').checked;
+        const d = parseFloat(document.getElementById('distance').value);
+        const e = parseFloat(document.getElementById('fuelEconomy').value);
+        const g = parseFloat(document.getElementById('gasPrice').value);
+        const pe = parseInt(document.getElementById('people').value) || 0;
+        const round = document.getElementById('roundTrip').checked;
 
-        if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){
-            displayError('走行距離、燃費、ガソリン価格を正しく入力してください');
-            return;
+        if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){ 
+            displayError('走行距離、燃費、ガソリン価格を正しく入力してください'); 
+            return; 
         }
 
-        const dist=round?d*2:d;
-        const fuel=dist/e;
-        const cost=Math.round(fuel*g);
-        totalCost=cost;
+        const dist = round ? d*2 : d;
+        const fuel = dist / e;
+        const cost = Math.round(fuel * g);
+        totalCost = cost;
 
-        html=`走行距離：${dist} km${round ? ' (往復)' : ''}<br>必要ガソリン量：${fuel.toFixed(2)} L<br>ガソリン代：<strong>${cost} 円</strong>`;
-        if(pe>0){
-            per=Math.round(cost/pe);
-            html+=`<br><br>1人あたり：<strong>${per} 円</strong>`;
-            document.getElementById('copyPerBtn').style.display='inline-block';
+        html = `走行距離：${dist} km${round ? ' (往復)' : ''}<br>必要ガソリン量：${fuel.toFixed(2)} L<br>ガソリン代：<strong>${cost} 円</strong>`;
+        if(pe > 0){
+            per = Math.round(cost / pe);
+            html += `<br><br>1人あたり：<strong>${per} 円</strong>`;
+            document.getElementById('copyPerBtn').style.display = 'inline-block';
         } else {
-            document.getElementById('copyPerBtn').style.display='none';
+            document.getElementById('copyPerBtn').style.display = 'none';
         }
 
         saveHistory({ mode:'single', d, e, g, pe, round, cost, timestamp: Date.now() });
         saveSingleCarInputs();
-
     } else {
-        const carRows=document.querySelectorAll('#carList .car-item');
-        const pe=parseInt(document.getElementById('multiPeople').value)||0;
-        let carData=[], inputError=false;
+        const carRows = document.querySelectorAll('#carList .car-item');
+        const pe = parseInt(document.getElementById('multiPeople').value) || 0;
+        let carData = [];
 
-        if(carRows.length===0){ displayError('車を1台以上追加してください'); return; }
+        if(carRows.length === 0){ displayError('車を1台以上追加してください'); return; }
 
-        carRows.forEach((row,i)=>{
-            const name=row.querySelector('.carName').value||`車${i+1}`;
-            const d=parseFloat(row.querySelector('.carDistance').value);
-            const e=parseFloat(row.querySelector('.carEconomy').value);
-            const g=parseFloat(row.querySelector('.carPrice').value);
-            const round=row.querySelector('.carRound').checked;
+        for(let i=0; i<carRows.length; i++){
+            const row = carRows[i];
+            const name = row.querySelector('.carName').value || `車${i+1}`;
+            const d = parseFloat(row.querySelector('.carDistance').value);
+            const e = parseFloat(row.querySelector('.carEconomy').value);
+            const g = parseFloat(row.querySelector('.carPrice').value);
+            const round = row.querySelector('.carRound').checked;
 
             if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){
                 displayError(`車 ${name} の走行距離、燃費、ガソリン価格を正しく入力してください`);
-                inputError=true;
-                return; // forEach内は抜けるが calc全体は続くので注意
+                return;
             }
 
-            const dist=round?d*2:d;
-            const fuel=dist/e;
-            const cost=Math.round(fuel*g);
-            totalCost+=cost;
-            html+=`<strong>${name}</strong><br>距離:${dist}km${round ? ' (往復)' : ''} / 燃費:${e}km/L / ガソリン代:<strong>${cost} 円</strong><br>`;
+            const dist = round ? d*2 : d;
+            const fuel = dist / e;
+            const cost = Math.round(fuel * g);
+            totalCost += cost;
+
+            html += `<strong>${name}</strong><br>距離:${dist}km${round ? ' (往復)' : ''} / 燃費:${e}km/L / ガソリン代:<strong>${cost} 円</strong><br>`;
             carData.push({ name, distance:d, economy:e, price:g, round, cost });
-        });
+        }
 
-        if(inputError) return; // ← これで全体を終了
-
-        html+=`<br><strong>合計ガソリン代：${totalCost} 円</strong>`;
-        if(pe>0){
-            per=Math.round(totalCost/pe);
-            html+=`<br>1人あたり：<strong>${per} 円</strong>`;
-            document.getElementById('copyPerBtn').style.display='inline-block';
+        html += `<br><strong>合計ガソリン代：${totalCost} 円</strong>`;
+        if(pe > 0){
+            per = Math.round(totalCost / pe);
+            html += `<br>1人あたり：<strong>${per} 円</strong>`;
+            document.getElementById('copyPerBtn').style.display = 'inline-block';
         } else {
-            document.getElementById('copyPerBtn').style.display='none';
+            document.getElementById('copyPerBtn').style.display = 'none';
         }
 
         saveHistory({ mode:'multi', cars:carData, pe, totalCost, timestamp: Date.now() });
         saveMultiCarInputs();
     }
 
-    // 最後に必ず結果を表示
-    lastCost=totalCost;
-    lastPer=per;
-    resultEl.innerHTML=html;
-    resultEl.style.display='block';
-    copyRowEl.style.display='flex';
+    lastCost = totalCost;
+    lastPer = per;
+    resultEl.innerHTML = html;
+    resultEl.style.display = 'block';
+    copyRowEl.style.display = 'flex';
 }
 
 

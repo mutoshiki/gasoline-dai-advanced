@@ -92,10 +92,22 @@ body.dark .tab-btn.active{
     color: #ffffff;
 }
 /* 複数車フォームの入力行ラベル (ダークモード) */
-body.dark #carList strong {
+body.dark .car-item strong {
     color: #e0e0e0;
 }
-
+/* 複数車フォームのラベルヘッダー (ダークモード) */
+body.dark .car-input-labels {
+    color: #aaa;
+}
+body.dark .car-item {
+    border-bottom: 1px solid #383b46;
+}
+/* 複数車フォームの入力フィールド (ダークモード) */
+body.dark #carList input[type="number"] {
+    background: #2b2d34;
+    color: #ffffff;
+    border-color:#555;
+}
 
     
 .header{
@@ -194,15 +206,55 @@ button.sub-btn{
     background:var(--main);
     color:#fff;
 }
-/* 複数車フォームの入力行のスタイル調整 */
+
+/* --- 複数車フォームのUI改善 (ここから修正/追加) --- */
+
+/* 入力行全体を包むコンテナ (新設) */
+.car-list-container {
+    padding-top: 5px; 
+}
+
+/* ヘッダーラベルのスタイル (新設) */
+.car-input-labels {
+    display: flex;
+    gap: 6px; 
+    margin-bottom: 5px;
+    font-size: 12px; 
+    font-weight: 500;
+    color: #555; 
+    align-items: center; /* 中央揃え */
+    padding-right: 18px; /* 削除ボタンのスペース分 */
+}
+/* 各ラベルは入力欄と同じ幅 */
+.car-input-labels > div {
+    flex: 1;
+    text-align: center; 
+}
+/* 往復チェックボックスの幅は空ける */
+.car-input-labels > div:last-child {
+    flex: 0 0 auto; 
+    width: 60px; /* 往復チェックボックスのスペース */
+    text-align: left;
+}
+
+/* 各車の行のコンテナ */
+.car-item {
+    margin-bottom: 15px; 
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+
+/* 複数車フォームの入力行のスタイル調整 (既存を修正) */
 #carList input[type="number"] {
-    padding: 8px; /* 複数行で狭く */
+    padding: 8px 6px; /* 複数行で狭く */
     border-radius: 8px;
     font-size: 14px;
+    text-align: center; /* 数字を中央寄せ */
 }
 #carList strong {
     display: block;
-    margin-top: 14px;
+    margin-top: 14px; /* 最初の行以外で少し空けるために、JSで調整が必要 */
     font-size: 14px;
     color: #333;
 }
@@ -219,10 +271,17 @@ button.sub-btn{
     white-space: nowrap;
     font-size: 14px;
     color: #555;
+    /* 往復と削除ボタンのための最小幅を確保 */
+    flex: 0 0 auto; 
 }
 .car-round-group input[type="checkbox"]{
     transform: scale(0.95);
     margin-left: 0;
+}
+/* 削除ボタンの調整 */
+.car-item strong button {
+    margin-left: auto !important; /* 右端に寄せる */
+    padding: 0 !important;
 }
 
 
@@ -307,8 +366,17 @@ button.sub-btn{
     </div>
 
     <div id="multiCarForm" role="tabpanel" aria-labelledby="mainTitle" style="display:none;">
-        <div id="carList">
+        <div class="car-list-container">
+            <div class="car-input-labels">
+                <div>距離</div>
+                <div>燃費</div>
+                <div>価格</div>
+                <div></div> 
             </div>
+            <div id="carList">
+                </div>
+        </div>
+        
         <button class="sub-btn" id="addCarBtn" style="margin-top:10px;">+ 車を追加</button>
 
         <label for="multiPeople" style="margin-top:20px;">割り勘人数（任意）</label>
@@ -348,7 +416,11 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // タブの復元
     const savedMode = localStorage.getItem('calc_mode') || 'single';
-    document.querySelector(`.tab-btn[data-mode="${savedMode}"]`).click();
+    // 初回ロード時に適切なタブをクリックしてUIを初期化する
+    const initialBtn = document.querySelector(`.tab-btn[data-mode="${savedMode}"]`);
+    if(initialBtn) initialBtn.click();
+    else document.querySelector('.tab-btn[data-mode="single"]').click(); // デフォルト
+    
 
     // 単一車フォームの復元
     ['distance','fuelEconomy','gasPrice','people'].forEach(k=>{
@@ -465,7 +537,7 @@ function resetInputs(){
 }
 
 
-/* ---- 複数台フォーム追加/削除 ---- */
+/* ---- 複数台フォーム追加/削除 (修正済み) ---- */
 function addCarRow(data={}) {
     const container = document.getElementById('carList');
     const idx = container.children.length; // 0から始まるインデックス
@@ -474,7 +546,8 @@ function addCarRow(data={}) {
     div.dataset.index = idx;
     
     // 最初の行以外は削除ボタンを表示
-    const deleteBtn = idx > 0 ? `<button onclick="removeCarRow(this)" style="background:none; border:none; color:red; cursor:pointer; font-size:16px; padding:0 4px; margin-left:6px;">&times;</button>` : '';
+    // スタイルを調整して右端に寄せる
+    const deleteBtn = idx > 0 ? `<button onclick="removeCarRow(this)" style="background:none; border:none; color:red; cursor:pointer; font-size:18px; padding:0; line-height:1; position:relative; top:2px;">&times;</button>` : '';
 
     div.innerHTML = `
         <strong style="display:flex; justify-content:space-between; align-items:center;">
@@ -482,9 +555,9 @@ function addCarRow(data={}) {
             ${deleteBtn}
         </strong>
         <div class="car-row-inner">
-            <input type="number" inputmode="decimal" placeholder="距離 km" value="${data.distance || ''}" class="carDistance" aria-label="車${idx+1} 走行距離">
-            <input type="number" inputmode="decimal" placeholder="燃費 km/L" value="${data.economy || ''}" class="carEconomy" aria-label="車${idx+1} 燃費">
-            <input type="number" inputmode="decimal" placeholder="価格 円/L" value="${data.price || ''}" class="carPrice" aria-label="車${idx+1} ガソリン価格">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.distance || ''}" class="carDistance" aria-label="車${idx+1} 走行距離">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.economy || ''}" class="carEconomy" aria-label="車${idx+1} 燃費">
+            <input type="number" inputmode="decimal" placeholder="" value="${data.price || ''}" class="carPrice" aria-label="車${idx+1} ガソリン価格">
             <div class="car-round-group">
                 <input type="checkbox" id="carRound${idx}" class="carRound" ${data.round?'checked':''} aria-label="車${idx+1} 往復" />
                 <label for="carRound${idx}" class="car-round-label">往復</label>
@@ -501,16 +574,11 @@ function removeCarRow(btnElement) {
         // 削除後にインデックスを振り直す
         document.querySelectorAll('.car-item').forEach((item, index) => {
             const num = index + 1;
-            item.querySelector('strong').firstChild.textContent = `車 ${num}`;
-            // 削除ボタンの表示/非表示を調整
-            const deleteBtn = item.querySelector('strong button');
-            if (index === 0) {
-                if(deleteBtn) deleteBtn.remove();
-            } else {
-                if(!deleteBtn) {
-                     item.querySelector('strong').insertAdjacentHTML('beforeend', `<button onclick="removeCarRow(this)" style="background:none; border:none; color:red; cursor:pointer; font-size:16px; padding:0 4px; margin-left:6px;">&times;</button>`);
-                }
-            }
+            // Strongタグの中身を更新
+            let strongContent = `車 ${num}`;
+            const deleteBtnHtml = index > 0 ? `<button onclick="removeCarRow(this)" style="background:none; border:none; color:red; cursor:pointer; font-size:18px; padding:0; line-height:1; position:relative; top:2px;">&times;</button>` : '';
+            item.querySelector('strong').innerHTML = strongContent + deleteBtnHtml;
+
             // inputのaria-labelとcheckboxのID/forを更新
             item.querySelector('.carDistance').setAttribute('aria-label', `車${num} 走行距離`);
             item.querySelector('.carEconomy').setAttribute('aria-label', `車${num} 燃費`);

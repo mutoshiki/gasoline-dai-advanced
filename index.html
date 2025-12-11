@@ -682,10 +682,13 @@ function saveHistory(data){
     loadHistory();
 }
 
+/* ---- 履歴機能 (修正版) ---- */
+
 function loadHistory(){
     const history = JSON.parse(localStorage.getItem('nenpi_history') || '[]');
     const list = document.getElementById('historyList');
     list.innerHTML = '';
+    
     history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'historyItem';
@@ -694,24 +697,44 @@ function loadHistory(){
 
         const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : '';
         let content = '';
+        
         if(item.mode === 'single'){
+            // 単一モードの表示
+            const isRound = item.round ? ' (往復)' : '';
+            const perPerson = item.pe > 0 ? ` (1人あたり: <strong>${Math.round(item.cost/item.pe)} 円</strong> / ${item.pe}人)` : '';
+            
             content = `
-                走行距離: ${item.d} km (${item.round?'往復':''}) / 燃費: ${item.e} km/L<br>
-                ガソリン代: ${item.cost} 円 ${item.pe>0?` (1人あたり: ${Math.round(item.cost/item.pe)} 円 / ${item.pe}人)`:''}
+                走行距離: ${item.d} km${isRound} / 燃費: ${item.e} km/L<br>
+                ガソリン代: <strong>${item.cost} 円</strong>${perPerson}
             `;
         } else {
-            const carDetails = item.cars.map(c => 
-                `${c.name || '車'}: 距離${c.distance}km (${c.round?'往復':''}) / 代${c.cost}円`
-            ).join('<br>');
+            // 複数モードの表示を箇条書きで整理
+            const carDetails = item.cars.map(c => {
+                const isRound = c.round ? ' (往復)' : '';
+                const name = c.name || '車';
+                return `<li>${name}: 距離${c.distance}km${isRound} / 代 <strong>${c.cost}円</strong></li>`;
+            }).join('');
+            
+            const perPerson = item.pe > 0 ? ` (1人あたり: <strong>${Math.round(item.totalCost/item.pe)} 円</strong> / ${item.pe}人)` : '';
+
             content = `
-                ${carDetails}<br>
-                合計ガソリン代: ${item.totalCost} 円 ${item.pe>0?` (1人あたり: ${Math.round(item.totalCost/item.pe)} 円 / ${item.pe}人)`:''}
+                <ul style="list-style-type:none; padding-left:10px; margin: 4px 0 8px 0;">
+                    ${carDetails}
+                </ul>
+                <hr style="border:0; border-top:1px solid rgba(0,0,0,0.1); margin: 6px 0;">
+                合計ガソリン代: <strong>${item.totalCost} 円</strong>${perPerson}
             `;
+            
+            // ダークモード対応のため、hrのスタイルをCSSで定義するか、インラインで調整
+            if (document.body.classList.contains('dark')) {
+                 content = content.replace('border-top:1px solid rgba(0,0,0,0.1)', 'border-top:1px solid rgba(255,255,255,0.15)');
+            }
         }
 
         div.innerHTML = `<b>${date}</b>${content}`;
         list.appendChild(div);
     });
+    
     if(history.length === 0){
         list.innerHTML = '<p style="font-size:13px; color:#999; text-align:center;">計算履歴はありません。</p>';
     }

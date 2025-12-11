@@ -207,6 +207,18 @@ button.sub-btn{
     color:#fff;
 }
 
+.result {
+    margin-top: 18px;
+    padding: 16px 18px;
+    background: #eef3ff;
+    border-left: 6px solid var(--main);
+    border-radius: 12px;
+    color: #111;
+    font-size: 15px;
+    line-height: 1.6;
+    transition: background .25s, color .25s;
+    /* 初期状態は非表示だがJSで block になる */
+}    
 /* 複数車フォーム */
 .car-list-container { padding-top: 5px; }
 .car-input-labels { display: flex; gap: 6px; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: #555; align-items: center; padding-right: 18px; }
@@ -528,101 +540,155 @@ function toggleTheme(){
     localStorage.setItem('theme', nowDark?'dark':'light');
 }
 
-function calc(){
-    const isMulti = currentMode === 'multi';
-    let totalCost = 0, html = '', per = 0;
+/* --- ここからコピー --- */
 
+function calc(){
+    // 現在のモード判定
+    const isMulti = currentMode === 'multi';
+    let totalCost = 0;
+    let html = '';
+    let per = 0;
+
+    // 結果表示用要素の取得
     const resultEl = document.getElementById('result');
     const copyRowEl = document.getElementById('copyRow');
-    resultEl.style.display = 'none';
-    copyRowEl.style.display = 'none';
+    const copyPerBtn = document.getElementById('copyPerBtn');
 
+    // 計算前に一旦非表示にする
+    if(resultEl) resultEl.style.display = 'none';
+    if(copyRowEl) copyRowEl.style.display = 'none';
+
+    // エラー表示用
     const displayError = (message) => {
         alert(message);
     };
 
     if(!isMulti){
-        const d = parseFloat(document.getElementById('distance').value);
-        const e = parseFloat(document.getElementById('fuelEconomy').value);
-        const g = parseFloat(document.getElementById('gasPrice').value);
-        const pe = parseInt(document.getElementById('people').value) || 0;
-        const round = document.getElementById('roundTrip').checked;
+        // -------------------------
+        // 1台モードの計算
+        // -------------------------
+        const dInput = document.getElementById('distance');
+        const eInput = document.getElementById('fuelEconomy');
+        const gInput = document.getElementById('gasPrice');
+        const pInput = document.getElementById('people');
+        const rInput = document.getElementById('roundTrip');
 
-        if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){ 
+        if(!dInput || !eInput || !gInput) return;
+
+        const d = parseFloat(dInput.value);
+        const e = parseFloat(eInput.value);
+        const g = parseFloat(gInput.value);
+        const pe = parseInt(pInput.value) || 0;
+        const round = rInput.checked;
+
+        // 入力チェック
+        if(isNaN(d) || isNaN(e) || isNaN(g) || d <= 0 || e <= 0 || g <= 0){ 
             displayError('走行距離、燃費、ガソリン価格を正しく入力してください'); 
             return; 
         }
 
-        const dist = round ? d*2 : d;
+        // 計算
+        const dist = round ? d * 2 : d;
         const fuel = dist / e;
         const cost = Math.round(fuel * g);
         totalCost = cost;
 
-        html = `走行距離：${dist} km${round ? ' (往復)' : ''}<br>必要ガソリン量：${fuel.toFixed(2)} L<br>ガソリン代：<strong>${cost} 円</strong>`;
+        // HTML生成
+        html = `走行距離：${dist} km${round ? ' (往復)' : ''}<br>
+                必要ガソリン量：${fuel.toFixed(2)} L<br>
+                ガソリン代：<strong>${cost} 円</strong>`;
+
         if(pe > 0){
             per = Math.round(cost / pe);
             html += `<br><br>1人あたり：<strong>${per} 円</strong>`;
-            document.getElementById('copyPerBtn').style.display = 'inline-block';
+            if(copyPerBtn) copyPerBtn.style.display = 'inline-block';
         } else {
-            document.getElementById('copyPerBtn').style.display = 'none';
+            if(copyPerBtn) copyPerBtn.style.display = 'none';
         }
 
-        saveHistory({ mode:'single', d, e, g, pe, round, cost, timestamp: Date.now() });
-        saveSingleCarInputs();
+        // 履歴と入力保存
+        if(typeof saveHistory === 'function') saveHistory({ mode:'single', d, e, g, pe, round, cost, timestamp: Date.now() });
+        if(typeof saveSingleCarInputs === 'function') saveSingleCarInputs();
+
     } else {
+        // -------------------------
+        // 複数台モードの計算
+        // -------------------------
         const carRows = document.querySelectorAll('#carList .car-item');
-        const pe = parseInt(document.getElementById('multiPeople').value) || 0;
+        const mpInput = document.getElementById('multiPeople');
+        const pe = parseInt(mpInput ? mpInput.value : 0) || 0;
         let carData = [];
 
-        if(carRows.length === 0){ displayError('車を1台以上追加してください'); return; }
+        if(carRows.length === 0){ 
+            displayError('車を1台以上追加してください'); 
+            return; 
+        }
 
-        for(let i=0; i<carRows.length; i++){
+        // 各車の計算ループ
+        for(let i = 0; i < carRows.length; i++){
             const row = carRows[i];
-            const name = row.querySelector('.carName').value || `車${i+1}`;
-            const d = parseFloat(row.querySelector('.carDistance').value);
-            const e = parseFloat(row.querySelector('.carEconomy').value);
-            const g = parseFloat(row.querySelector('.carPrice').value);
-            const round = row.querySelector('.carRound').checked;
+            const nameInput = row.querySelector('.carName');
+            const dInput = row.querySelector('.carDistance');
+            const eInput = row.querySelector('.carEconomy');
+            const pInput = row.querySelector('.carPrice');
+            const rInput = row.querySelector('.carRound');
 
-            if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){
-                displayError(`車 ${name} の走行距離、燃費、ガソリン価格を正しく入力してください`);
+            const name = (nameInput && nameInput.value) ? nameInput.value : `車${i+1}`;
+            const d = parseFloat(dInput ? dInput.value : 0);
+            const e = parseFloat(eInput ? eInput.value : 0);
+            const g = parseFloat(pInput ? pInput.value : 0);
+            const round = rInput ? rInput.checked : false;
+
+            if(isNaN(d) || isNaN(e) || isNaN(g) || d <= 0 || e <= 0 || g <= 0){
+                displayError(`${name} の入力を確認してください`);
                 return;
             }
 
-            const dist = round ? d*2 : d;
+            const dist = round ? d * 2 : d;
             const fuel = dist / e;
             const cost = Math.round(fuel * g);
             totalCost += cost;
 
-            // 【修正箇所】結果が見やすいようにHTMLタグ構造を調整
-            html += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed rgba(120,120,120,0.2);">
+            // HTML生成（見やすく区切る）
+            html += `<div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed rgba(120,120,120,0.3);">
                         <strong>${name}</strong><br>
-                        <span style="font-size:0.95em">距離:${dist}km${round ? '(往)' : ''} / 燃費:${e} / 単価:${g}</span><br>
+                        <span style="font-size:0.9em; opacity:0.9;">距離:${dist}km${round ? '(往)' : ''} / 燃費:${e} / 単価:${g}</span><br>
                         ガソリン代: <strong>${cost} 円</strong>
                      </div>`;
             
             carData.push({ name, distance:d, economy:e, price:g, round, cost });
         }
 
-        html += `<div style="margin-top:8px;"><strong>合計ガソリン代：${totalCost} 円</strong></div>`;
+        // 合計表示
+        html += `<div style="margin-top:8px; font-size:1.1em;">合計ガソリン代：<strong>${totalCost} 円</strong></div>`;
+        
         if(pe > 0){
             per = Math.round(totalCost / pe);
-            html += `<div>1人あたり：<strong>${per} 円</strong></div>`;
-            document.getElementById('copyPerBtn').style.display = 'inline-block';
+            html += `<div style="margin-top:4px;">1人あたり：<strong>${per} 円</strong></div>`;
+            if(copyPerBtn) copyPerBtn.style.display = 'inline-block';
         } else {
-            document.getElementById('copyPerBtn').style.display = 'none';
+            if(copyPerBtn) copyPerBtn.style.display = 'none';
         }
 
-        saveHistory({ mode:'multi', cars:carData, pe, totalCost, timestamp: Date.now() });
-        saveMultiCarInputs();
+        // 履歴と入力保存
+        if(typeof saveHistory === 'function') saveHistory({ mode:'multi', cars:carData, pe, totalCost, timestamp: Date.now() });
+        if(typeof saveMultiCarInputs === 'function') saveMultiCarInputs();
     }
 
+    // 最終的な表示処理
     lastCost = totalCost;
     lastPer = per;
-    resultEl.innerHTML = html;
-    resultEl.style.display = 'block';
-    copyRowEl.style.display = 'flex';
+    
+    if(resultEl) {
+        resultEl.innerHTML = html;
+        resultEl.style.display = 'block'; // ここで確実に表示
+    }
+    if(copyRowEl) {
+        copyRowEl.style.display = 'flex';
+    }
 }
+
+/* --- ここまで --- */
 
 /* ---- 保存/リセット/コピー ---- */
 

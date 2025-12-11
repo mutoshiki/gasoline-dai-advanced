@@ -532,74 +532,70 @@ function toggleTheme(){
     localStorage.setItem('theme', nowDark?'dark':'light');
 }
 
-/* ---- 計算 (修正版) ---- */
 function calc(){
     const isMulti = currentMode === 'multi';
     let totalCost=0, html='', per=0;
-    
-    // 結果表示要素を確実に取得
+
     const resultEl = document.getElementById('result');
     const copyRowEl = document.getElementById('copyRow');
-    
+
     // 計算前に結果表示をリセット
     resultEl.style.display='none';
     copyRowEl.style.display='none';
-    
-    // エラーメッセージを表示するための関数 (任意)
+
     const displayError = (message) => {
         alert(message);
-        // エラー発生時は処理を中断し、結果は非表示のまま
     };
 
     if(!isMulti){
-        // 単一モードの計算
         const d=parseFloat(document.getElementById('distance').value);
         const e=parseFloat(document.getElementById('fuelEconomy').value);
         const g=parseFloat(document.getElementById('gasPrice').value);
         const pe=parseInt(document.getElementById('people').value)||0;
         const round=document.getElementById('roundTrip').checked;
-        
-        if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){ 
-            displayError('走行距離、燃費、ガソリン価格を正しく入力してください'); 
-            return; 
+
+        if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){
+            displayError('走行距離、燃費、ガソリン価格を正しく入力してください');
+            return;
         }
-        
+
         const dist=round?d*2:d;
         const fuel=dist/e;
         const cost=Math.round(fuel*g);
         totalCost=cost;
-        
+
         html=`走行距離：${dist} km${round ? ' (往復)' : ''}<br>必要ガソリン量：${fuel.toFixed(2)} L<br>ガソリン代：<strong>${cost} 円</strong>`;
-        if(pe>0){ 
-            per=Math.round(cost/pe); 
-            html+=`<br><br>1人あたり：<strong>${per} 円</strong>`; 
-            document.getElementById('copyPerBtn').style.display='inline-block'; 
+        if(pe>0){
+            per=Math.round(cost/pe);
+            html+=`<br><br>1人あたり：<strong>${per} 円</strong>`;
+            document.getElementById('copyPerBtn').style.display='inline-block';
         } else {
             document.getElementById('copyPerBtn').style.display='none';
         }
+
         saveHistory({ mode:'single', d, e, g, pe, round, cost, timestamp: Date.now() });
-        saveSingleCarInputs(); 
+        saveSingleCarInputs();
+
     } else {
-        // 複数モードの計算
         const carRows=document.querySelectorAll('#carList .car-item');
         const pe=parseInt(document.getElementById('multiPeople').value)||0;
         let carData=[], inputError=false;
-        
+
         if(carRows.length===0){ displayError('車を1台以上追加してください'); return; }
-        
+
         carRows.forEach((row,i)=>{
             const name=row.querySelector('.carName').value||`車${i+1}`;
             const d=parseFloat(row.querySelector('.carDistance').value);
             const e=parseFloat(row.querySelector('.carEconomy').value);
             const g=parseFloat(row.querySelector('.carPrice').value);
             const round=row.querySelector('.carRound').checked;
-            
-            if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){ 
-                displayError(`車 ${name} の走行距離、燃費、ガソリン価格を正しく入力してください`); 
-                inputError=true; 
-                return; 
+
+            if(isNaN(d)||isNaN(e)||isNaN(g)||d<=0||e<=0||g<=0){
+                displayError(`車 ${name} の走行距離、燃費、ガソリン価格を正しく入力してください`);
+                inputError=true;
+                return; // forEach内は抜けるが calc全体は続くので注意
             }
-            
+
             const dist=round?d*2:d;
             const fuel=dist/e;
             const cost=Math.round(fuel*g);
@@ -607,28 +603,30 @@ function calc(){
             html+=`<strong>${name}</strong><br>距離:${dist}km${round ? ' (往復)' : ''} / 燃費:${e}km/L / ガソリン代:<strong>${cost} 円</strong><br>`;
             carData.push({ name, distance:d, economy:e, price:g, round, cost });
         });
-        
-        if(inputError) return;
-        
+
+        if(inputError) return; // ← これで全体を終了
+
         html+=`<br><strong>合計ガソリン代：${totalCost} 円</strong>`;
-        if(pe>0){ 
-            per=Math.round(totalCost/pe); 
-            html+=`<br>1人あたり：<strong>${per} 円</strong>`; 
-            document.getElementById('copyPerBtn').style.display='inline-block'; 
+        if(pe>0){
+            per=Math.round(totalCost/pe);
+            html+=`<br>1人あたり：<strong>${per} 円</strong>`;
+            document.getElementById('copyPerBtn').style.display='inline-block';
         } else {
             document.getElementById('copyPerBtn').style.display='none';
         }
+
         saveHistory({ mode:'multi', cars:carData, pe, totalCost, timestamp: Date.now() });
-        saveMultiCarInputs(); 
+        saveMultiCarInputs();
     }
-    
-    // 全ての計算と保存が成功した場合に結果を表示
-    lastCost=totalCost; 
+
+    // 最後に必ず結果を表示
+    lastCost=totalCost;
     lastPer=per;
-    resultEl.innerHTML=html; 
-    resultEl.style.display='block'; 
+    resultEl.innerHTML=html;
+    resultEl.style.display='block';
     copyRowEl.style.display='flex';
 }
+
 
 
 /* ---- 保存/リセット/コピー ---- */
